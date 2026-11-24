@@ -35,7 +35,7 @@ export async function fetchValoresHoy(): Promise<ValorDia[]> {
   const data = await getJson<RespuestaHoy>(API_BASE);
   return CODIGOS.map((codigo) => ({
     codigo,
-    valor: data[codigo]?.valor ?? null,
+    valor: esNumeroValido(data[codigo]?.valor) ? Number(data[codigo]?.valor) : null,
     fecha: data[codigo]?.fecha ?? null,
   }));
 }
@@ -51,11 +51,27 @@ export async function fetchAnio(codigo: CodigoIndicador, anio: number): Promise<
   return normalizarSerie(data.serie);
 }
 
-/** Ordena ascendente por fecha y deja la fecha como YYYY-MM-DD. */
+function esNumeroValido(valor: unknown): boolean {
+  return (typeof valor === 'number' || typeof valor === 'string') && valor !== '' && Number.isFinite(Number(valor));
+}
+
+/**
+ * Ordena ascendente por fecha y deja la fecha como YYYY-MM-DD.
+ * Descarta puntos sin fecha o con un valor que no sea un número finito.
+ */
 export function normalizarSerie(serie: RespuestaSerie['serie'] = []): PuntoSerie[] {
   return serie
+    .filter((p) => typeof p?.fecha === 'string' && esNumeroValido(p.valor))
     .map((p) => ({ fecha: p.fecha.slice(0, 10), valor: Number(p.valor) }))
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+/** Deja solo los puntos de los últimos `dias` días, contando hacia atrás desde la fecha más reciente. */
+export function filtrarUltimosDias(serie: PuntoSerie[], dias: number): PuntoSerie[] {
+  if (serie.length === 0) return serie;
+  const ultima = Date.parse(serie[serie.length - 1].fecha);
+  const desde = new Date(ultima - (dias - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return serie.filter((p) => p.fecha >= desde);
 }
 
 /** Filtra una serie a un mes (1-12) de un año. */

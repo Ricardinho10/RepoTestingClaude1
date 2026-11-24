@@ -1,10 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchAnio, fetchUltimos, fetchValoresHoy, filtrarMes, INDICADORES } from '../lib/indicadores';
+import { fetchAnio, fetchUltimos, fetchValoresHoy, filtrarMes, filtrarUltimosDias, INDICADORES } from '../lib/indicadores';
 import type { CodigoIndicador } from '../lib/indicadores';
 
 export function useValoresHoy() {
   return useQuery({ queryKey: ['hoy'], queryFn: fetchValoresHoy });
 }
+
+/** El endpoint sin año entrega los últimos 30 registros; el dólar solo se publica en días hábiles. */
+export const DIAS_ULTIMOS = 30;
 
 export type Periodo = { tipo: 'ultimos' } | { tipo: 'mes'; anio: number; mes: number };
 
@@ -20,6 +23,10 @@ export function useSerieIndicador(codigo: CodigoIndicador, periodo: Periodo) {
   return useQuery({
     queryKey: anio == null ? ['ultimos', codigo] : ['anio', codigo, anio],
     queryFn: () => (anio == null ? fetchUltimos(codigo) : fetchAnio(codigo, anio)),
-    select: (serie) => (anio == null || mes == null || isMensual ? serie : filtrarMes(serie, anio, mes)),
+    select: (serie) => {
+      if (isMensual) return serie;
+      if (anio == null || mes == null) return filtrarUltimosDias(serie, DIAS_ULTIMOS);
+      return filtrarMes(serie, anio, mes);
+    },
   });
 }

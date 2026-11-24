@@ -7,6 +7,7 @@ import {
   fetchUltimos,
   fetchValoresHoy,
   filtrarMes,
+  filtrarUltimosDias,
   mediaMovil,
   normalizarSerie,
 } from './indicadores';
@@ -25,6 +26,15 @@ describe('normalizarSerie', () => {
     ]);
   });
 
+  it('descarta puntos con valor no numérico', () => {
+    const s = normalizarSerie([
+      { fecha: '2026-11-01T03:00:00.000Z', valor: 'abc' },
+      { fecha: '2026-11-02T03:00:00.000Z', valor: '' },
+      { fecha: '2026-11-03T03:00:00.000Z', valor: 5 },
+    ]);
+    expect(s).toEqual([{ fecha: '2026-11-03', valor: 5 }]);
+  });
+
   it('devuelve vacío sin serie', () => {
     expect(normalizarSerie(undefined)).toEqual([]);
   });
@@ -34,6 +44,21 @@ describe('filtrarMes', () => {
   it('deja solo el mes pedido', () => {
     const s = [{ fecha: '2026-10-31', valor: 1 }, { fecha: '2026-11-01', valor: 2 }];
     expect(filtrarMes(s, 2026, 11)).toEqual([{ fecha: '2026-11-01', valor: 2 }]);
+  });
+});
+
+describe('filtrarUltimosDias', () => {
+  it('cuenta los días desde la fecha más reciente', () => {
+    const s = [
+      { fecha: '2026-10-25', valor: 1 },
+      { fecha: '2026-10-26', valor: 2 },
+      { fecha: '2026-11-24', valor: 3 },
+    ];
+    expect(filtrarUltimosDias(s, 30)).toEqual([{ fecha: '2026-10-26', valor: 2 }, { fecha: '2026-11-24', valor: 3 }]);
+  });
+
+  it('acepta una serie vacía', () => {
+    expect(filtrarUltimosDias([], 30)).toEqual([]);
   });
 });
 
@@ -61,6 +86,12 @@ describe('llamadas a la API', () => {
     expect(v.map((x) => x.codigo)).toEqual(['uf', 'utm', 'dolar']);
     expect(v[0].valor).toBe(39000);
     expect(v[1].valor).toBeNull();
+  });
+
+  it('fetchValoresHoy deja en null un valor no numérico', async () => {
+    mockFetch({ [API_BASE]: { dolar: { valor: 'N/D', fecha: '2026-11-24T03:00:00.000Z' } } });
+    const v = await fetchValoresHoy();
+    expect(v[2].valor).toBeNull();
   });
 
   it('fetchUltimos y fetchAnio usan la URL correcta', async () => {

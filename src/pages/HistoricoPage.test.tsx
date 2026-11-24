@@ -68,6 +68,33 @@ describe('HistoricoPage', () => {
     expect(await screen.findByRole('heading', { name: 'Últimos 30 días' })).toBeInTheDocument();
   });
 
+  it('desde "Últimos 30 días" permite elegir directamente el mes actual', async () => {
+    const user = userEvent.setup();
+    mockFetch({ [`${API_BASE}/uf`]: ufUltimos, [`${API_BASE}/uf/2026`]: ufUltimos });
+    renderConProveedores(<HistoricoPage hoy={HOY} />);
+    await screen.findByRole('img', { name: 'Gráfico de UF' });
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Mes' }), '11');
+    expect(await screen.findByRole('heading', { name: 'Noviembre 2026' })).toBeInTheDocument();
+  });
+
+  it('"Últimos 30 días" recorta por fecha y no por cantidad de registros', async () => {
+    const user = userEvent.setup();
+    const dolar = {
+      serie: [
+        { fecha: '2026-11-24T03:00:00.000Z', valor: 950 },
+        { fecha: '2026-10-26T03:00:00.000Z', valor: 940 },
+        { fecha: '2026-10-15T03:00:00.000Z', valor: 930 },
+      ],
+    };
+    mockFetch({ [`${API_BASE}/uf`]: ufUltimos, [`${API_BASE}/dolar`]: dolar });
+    renderConProveedores(<HistoricoPage hoy={HOY} />);
+
+    await user.click(screen.getByRole('tab', { name: 'Dólar' }));
+    await screen.findByRole('img', { name: 'Gráfico de Dólar' });
+    expect(filasTabla()).toHaveLength(2);
+  });
+
   it('no permite meses futuros', async () => {
     const user = userEvent.setup();
     mockFetch({ [`${API_BASE}/uf`]: ufUltimos, [`${API_BASE}/uf/2026`]: ufUltimos });
@@ -86,6 +113,7 @@ describe('HistoricoPage', () => {
 
     await user.click(screen.getByRole('tab', { name: 'UTM' }));
     expect(screen.getByRole('combobox', { name: 'Mes' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Últimos valores' })).toHaveAttribute('aria-pressed', 'true');
     await user.selectOptions(screen.getByRole('combobox', { name: 'Año' }), '2025');
     expect(await screen.findByRole('heading', { name: 'Año 2025' })).toBeInTheDocument();
     expect(filasTabla()).toHaveLength(2);

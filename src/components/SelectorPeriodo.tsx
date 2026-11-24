@@ -15,6 +15,7 @@ type Props = {
 export function SelectorPeriodo({ periodo, anioActual, mesActual, isSoloAnio, onChange }: Props) {
   const anio = periodo.tipo === 'mes' ? periodo.anio : anioActual;
   const mes = periodo.tipo === 'mes' ? periodo.mes : mesActual;
+  const isUltimos = periodo.tipo === 'ultimos';
   const anios = Array.from({ length: anioActual - ANIO_INICIAL + 1 }, (_, i) => anioActual - i);
 
   const isFuturo = (a: number, m: number) => a > anioActual || (a === anioActual && m > mesActual);
@@ -38,20 +39,23 @@ export function SelectorPeriodo({ periodo, anioActual, mesActual, isSoloAnio, on
     <div className="filtros">
       <button
         type="button"
-        className={periodo.tipo === 'ultimos' ? 'activo' : ''}
-        aria-pressed={periodo.tipo === 'ultimos'}
+        className={isUltimos ? 'activo' : ''}
+        aria-pressed={isUltimos}
         onClick={() => onChange({ tipo: 'ultimos' })}
       >
-        Últimos 30 días
+        {isSoloAnio ? 'Últimos valores' : 'Últimos 30 días'}
       </button>
       <span className="sep">o elige período:</span>
       <button type="button" aria-label="Mes anterior" disabled={isSoloAnio || !hayAnterior} onClick={() => irA(anterior.a, anterior.m)}>‹</button>
-      <select aria-label="Mes" value={mes} disabled={isSoloAnio} onChange={(e) => irA(anio, Number(e.target.value))}>
+      {/* En "últimos" los selects muestran un marcador vacío, así cualquier mes o año (incluido el actual) dispara onChange. */}
+      <select aria-label="Mes" value={isUltimos ? '' : mes} disabled={isSoloAnio} onChange={(e) => irA(anio, Number(e.target.value))}>
+        {isUltimos && <option value="" disabled>Mes…</option>}
         {MESES.map((nombre, i) => (
           <option key={nombre} value={i + 1} disabled={isFuturo(anio, i + 1)}>{nombre}</option>
         ))}
       </select>
-      <select aria-label="Año" value={anio} onChange={(e) => irA(Number(e.target.value), mes)}>
+      <select aria-label="Año" value={isUltimos ? '' : anio} onChange={(e) => irA(Number(e.target.value), mes)}>
+        {isUltimos && <option value="" disabled>Año…</option>}
         {anios.map((a) => <option key={a} value={a}>{a}</option>)}
       </select>
       <button type="button" aria-label="Mes siguiente" disabled={isSoloAnio || !haySiguiente} onClick={() => irA(siguiente.a, siguiente.m)}>›</button>
